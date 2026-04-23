@@ -1,0 +1,194 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:http/http.dart' as http;
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
+
+class ApiClient {
+  static const String baseUrl = 'https://vibe.blackbearsplay.ru';
+  
+  // Для веб-версии используем относительные пути (прокси будет перенаправлять)
+  static String get _effectiveBaseUrl {
+    if (kIsWeb) {
+      // В веб-версии используем относительные пути
+      // Прокси сервер будет перенаправлять запросы
+      return '';
+    }
+    return baseUrl;
+  }
+
+  static Future<Map<String, dynamic>> get(String endpoint, {Map<String, String>? params}) async {
+    final uri = Uri.parse('$_effectiveBaseUrl$endpoint').replace(queryParameters: params);
+    
+    // Добавили таймаут и автоповтор для защиты от падений сервера
+    int retryCount = 3;
+    while (retryCount > 0) {
+      try {
+        final response = await http
+            .get(uri, headers: {'Accept': 'application/json'})
+            .timeout(const Duration(seconds: 10));
+        return _handleResponse(response);
+      } catch (e) {
+        retryCount--;
+        if (retryCount == 0) rethrow;
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
+    throw Exception('Не удалось связаться с сервером');
+  }
+
+  static Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> body) async {
+    final url = Uri.parse('$_effectiveBaseUrl$endpoint');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: json.encode(body),
+    );
+    return _handleResponse(response);
+  }
+
+  static Map<String, dynamic> _handleResponse(http.Response response) {
+    if (response.body.isEmpty) throw Exception('Пустой ответ от сервера');
+    
+    final Map<String, dynamic> data = json.decode(response.body);
+
+    final dynamic code = data['code'].toString();
+    final String message = (data['message'] ?? "").toString().toLowerCase();
+
+    // 1. ЗАЩИТА ОТ ЛОЖНОГО УСПЕХА
+    // Если в сообщении есть слова об ошибке, это ПРОВАЛ, даже если код 0
+    bool isFakeSuccess = message.contains('incorrect') || 
+                         message.contains('empty') || 
+                         message.contains('error') || 
+                         message.contains('not allowed') ||
+                         message.contains('не удалось') ||
+                         message.contains('occupied');
+
+    // 2. ПРОВЕРКА УСПЕХА
+    bool isSuccess = (code == '0' || code == '3' || code == '200' || code == '201') || 
+                     message.contains('succes');
+
+    if (isSuccess && !isFakeSuccess) {
+      return data;
+    } else {
+      // Если сервер запрятал ошибку глубоко в iCafe_response, достаем её
+      String errorMsg = data['message'] ?? 'Ошибка API: $code';
+      if (data['iCafe_response'] != null && data['iCafe_response']['message'] != null) {
+        errorMsg = data['iCafe_response']['message'];
+      }
+      throw Exception(errorMsg);
+    }
+  }
+
+  // --- МЕТОДЫ АВТОРИЗАЦИИ И РЕГИСТРАЦИИ ---
+  // --- НОВЫЙ МЕТОД ДЛЯ DELETE ЗАПРОСОВ (Отмена брони) ---
+  static Future<Map<String, dynamic>> deleteReq(String endpoint, {Map<String, dynamic>? body}) async {
+    final url = Uri.parse('$_effectiveBaseUrl$endpoint');
+    
+    print('--- ЗАПРОС DELETE НА $endpoint ---');
+    if (body != null) print('BODY: ${json.encode(body)}');
+
+    final response = await http.delete(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: body != null ? json.encode(body) : null,
+    );
+    
+    // Для DELETE запросов серверы часто возвращают пустой ответ с кодом 200 или 204
+    if (response.body.isEmpty && (response.statusCode == 200 || response.statusCode == 204)) {
+      return {'code': 0, 'message': 'Success'};
+    }
+    
+    return _handleResponse(response);
+  }
+
+  // --- ИСТИННАЯ ОТМЕНА БРОНИРОВАНИЯ (iCafeCloud API) ---
+// --- ИСТИННАЯ ОТМЕНА БРОНИРОВАНИЯ (теперь и с offerId) ---
+  static Future<void> cancelBooking(String cafeId, String bookingId, String pcName, String offerId) async {
+    await deleteReq('/api/v2/cafe/$cafeId/bookings', body: {
+      "booking_ids": [int.tryParse(bookingId) ?? 0],
+      "pc_name": pcName,
+      "member_offer_id": int.tryParse(offerId) ?? 0, // Добавили то, что он просит сейчас
+    });
+  }
+
+ static Future<Map<String, dynamic>> login(String username, String password) async {
+    final response = await post('/login', {
+      'member_name': username,
+      'password': password,
+    });
+    
+    // СТРОГАЯ ПРОВЕРКА: Если сервер ответил "Успех", но забыл прислать данные игрока — это обман!
+    if (response['member'] == null && response['data'] == null) {
+      throw Exception('Неверный логин или пароль');
+    }
+    
+    return response;
+  }
+
+  static Future<Map<String, dynamic>> registerMember({
+    required String cafeId,
+    required String login,
+    required String phone,
+    required String password,
+  }) async {
+    return await post('/api/v2/cafe/$cafeId/members', {
+      'member_account': login,
+      'member_phone': phone,
+      'member_password': password, 
+      'password': password,        
+    });
+  }
+
+  static Future<Map<String, dynamic>> requestSms(String memberId) async {
+    return await post('/request-sms', {'member_id': memberId});
+  }
+
+  static Future<Map<String, dynamic>> verifySms(String memberId, String code) async {
+    return await post('/verify', {'member_id': memberId, 'code': code});
+  }
+
+  // --- МЕТОДЫ ПРОФИЛЯ ---
+
+  static Future<Map<String, dynamic>> topUpBalance({
+    required String cafeId,
+    required String memberId,
+    required String account,
+    required double amount,
+  }) async {
+    return await post('/api/v2/cafe/$cafeId/members/$memberId/topup', {
+      'amount': amount.toString(),
+      'member_account': account,
+      'pay_method': 'cash',
+    });
+  }
+
+  // ТОТ САМЫЙ МЕТОД ДЛЯ ИСТОРИИ СЕССИЙ (ИЗ PDF)
+  // Исправляем ошибку организаторов в документации: используем /all-books-cafes
+  static Future<Map<String, dynamic>> getBookingHistory(String account) async {
+    return await get('/all-books-cafes', params: {'member_account': account});
+  }
+
+  // --- МЕТОДЫ БРОНИРОВАНИЯ ---
+
+  static Future<Map<String, dynamic>> getAvailablePcs({required String cafeId, required String date, required String time, required int mins}) async {
+    return await get('/available-pcs-for-booking', params: {'cafeId': cafeId, 'dateStart': date, 'timeStart': time, 'mins': mins.toString(), 'isFindWindow': 'true'});
+  }
+
+  static Future<Map<String, dynamic>> getAllPrices({required String cafeId, required String memberId, required String date}) async {
+    return await get('/all-prices-icafe', params: {'cafeId': cafeId, 'memberId': memberId, 'bookingDate': date});
+  }
+
+  static Map<String, String> generateBookingKeys(String cafeId, String pcName, String memberId) {
+    String randKey = (Random().nextInt(900000000) + 1000000000).toString();
+    String rawKey = "$cafeId$pcName$memberId$randKey"; 
+    String key = md5.convert(utf8.encode(rawKey)).toString();
+    return {'rand_key': randKey, 'key': key};
+  }
+}

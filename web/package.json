@@ -1,0 +1,14 @@
+{
+  "name": "bbplay-web-dev",
+  "version": "1.0.0",
+  "description": "Development server for BBplay web version with CORS proxy",
+  "scripts": {
+    "start": "node dev_server.js",
+    "install-deps": "npm install express http-proxy-middleware"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6"
+  },
+  "devDependencies": {}
+}

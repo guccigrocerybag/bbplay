@@ -1,0 +1,68 @@
+{
+  "/api": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/login": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/cafes": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/struct-rooms-icafe": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/available-pcs-for-booking": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/booking": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/all-books-cafes": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/request-sms": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/verify": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/topup": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/cancel": {
+    "target": "https://vibe.blackbearsplay.ru",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}
