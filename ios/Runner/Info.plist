@@ -66,5 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>BBplay needs access to your photo library to set an avatar picture</string>
+	<key>NSCameraUsageDescription</key>
+	<string>BBplay needs camera access to take a profile photo</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BBplay may need microphone access for video features</string>
+	<key>UNNotificationSourceDescription</key>
+	<string>BBplay sends notifications about your gaming sessions</string>
 </dict>
 </plist>
