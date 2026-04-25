@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:provider/provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/video_player_widget.dart'; // <--- Подключаем наш плеер
 
 class NewsScreen extends StatefulWidget {
@@ -19,17 +22,10 @@ class _NewsScreenState extends State<NewsScreen> {
 
   final List<Map<String, dynamic>> _fallbackPosts =[
     {
-      'text': '🚀 Глобальное обновление в BBplay! \n\nМы установили RTX 4060 во всех залах. Максимальный FPS во всех новинках гарантирован. Ждем на тест!',
+      'text': '🎮 Добро пожаловать в BBplay! \n\nСледите за новостями в нашем сообществе VK. Здесь будут появляться актуальные новости, турниры и акции.',
       'date': 1713600000,
-      'image': 'https://avatars.mds.yandex.net/i?id=38166c30f40606f7f34f78317e008d5e_l-5221546-images-thumbs&n=13',
       'owner_id': -211993439, 'id': 1
     },
-    {
-      'text': '🎮 Турнир по CS2! \n\nСобирай команду, регистрация открыта в сообщениях группы. Призовой фонд: 50 000 ₽.',
-      'date': 1713500000,
-      'image': 'https://avatars.mds.yandex.net/i?id=1285223e743a6d713c233c7064971c26_l-5310651-images-thumbs&n=13',
-      'owner_id': -211993439, 'id': 2
-    }
   ];
 
   Future<List<dynamic>> _fetchVkNews() async {
@@ -74,12 +70,16 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
-  // --- ОБРАБОТКА КЛИКА НА МЕДИА ---
+  // --- ОБРАБОТКА КЛИКА НА НОВОСТЬ ---
   void _handleMediaTap(Map<String, dynamic> post) async {
-    final media = _getMediaData(post);
-    if (media == null) return;
+    // Собираем ссылку на пост VK: https://vk.com/wall{owner_id}_{id}
+    final ownerId = post['owner_id'];
+    final postId = post['id'];
+    final vkPostUrl = 'https://vk.com/wall${ownerId}_$postId';
 
-    if (media['isVideo'] == true) {
+    final media = _getMediaData(post);
+
+    if (media != null && media['isVideo'] == true) {
       // Открываем видео в модальном окне
       showDialog(
         context: context,
@@ -90,8 +90,8 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
       );
     } else {
-      // Открываем фото в браузере
-      final url = Uri.parse(media['url']);
+      // Открываем пост VK в браузере
+      final url = Uri.parse(vkPostUrl);
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
@@ -103,11 +103,12 @@ class _NewsScreenState extends State<NewsScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final settings = Provider.of<SettingsProvider>(context);
     
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
-        title: const Text('News Feed', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+        title: Text(settings.getText('news'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
@@ -117,7 +118,7 @@ class _NewsScreenState extends State<NewsScreen> {
         future: _fetchVkNews(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: colorScheme.primary));
+            return _buildShimmerLoading(colorScheme);
           }
 
           final posts = snapshot.data ?? _fallbackPosts;
@@ -186,9 +187,8 @@ class _NewsScreenState extends State<NewsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children:[
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.end,
                                 children:[
-                                  Text('OFFICIAL POST', style: TextStyle(color: colorScheme.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                                   Text(_formatDate(post['date']), style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 11)),
                                 ],
                               ),
@@ -203,7 +203,7 @@ class _NewsScreenState extends State<NewsScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  Text(media?['isVideo'] == true ? 'WATCH VIDEO' : 'READ MORE', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.bold)),
+                                  Text(media?['isVideo'] == true ? settings.getText('watch_video') : settings.getText('read_more'), style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.bold)),
                                   const SizedBox(width: 4),
                                   Icon(Icons.arrow_forward_ios, size: 10, color: colorScheme.onSurface.withOpacity(0.6)),
                                 ],
@@ -216,6 +216,56 @@ class _NewsScreenState extends State<NewsScreen> {
                   ),
                 );
               },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Скелетон-загрузка с эффектом Shimmer для новостей
+  Widget _buildShimmerLoading(ColorScheme colorScheme) {
+    return Shimmer.fromColors(
+      baseColor: colorScheme.surfaceVariant.withOpacity(0.5),
+      highlightColor: colorScheme.surfaceVariant.withOpacity(0.8),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 3,
+        itemBuilder: (context, index) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Изображение
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                ),
+                // Текст
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(height: 14, width: 100, color: Colors.white),
+                      const SizedBox(height: 12),
+                      Container(height: 14, width: double.infinity, color: Colors.white),
+                      const SizedBox(height: 8),
+                      Container(height: 14, width: double.infinity, color: Colors.white),
+                      const SizedBox(height: 8),
+                      Container(height: 14, width: 150, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ],
             ),
           );
         },

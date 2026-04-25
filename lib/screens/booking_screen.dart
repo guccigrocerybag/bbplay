@@ -6,6 +6,7 @@ import '../core/services/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/settings_provider.dart';
+import '../widgets/app_animations.dart';
 import 'history_screen.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -246,7 +247,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     );
                   },
                   child: Text(
-                    'Все сессии →',
+                    s.getText('all_sessions'),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                       fontSize: 11,
@@ -280,20 +281,20 @@ class _BookingScreenState extends State<BookingScreen> {
                   final to = DateTime.parse(toStr.replaceAll(' ', 'T'));
                   
                   if (now.isBefore(from)) {
-                    statusText = 'UPCOMING';
+                    statusText = s.getText('upcoming');
                     statusColor = Colors.green;
                     canCancel = true;
                   } else if (now.isAfter(to)) {
-                    statusText = 'EXPIRED';
+                    statusText = s.getText('expired');
                     statusColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.4);
                     canCancel = false;
                   } else {
-                    statusText = 'ACTIVE';
+                    statusText = s.getText('active_status');
                     statusColor = Colors.orange;
                     canCancel = false;
                   }
                 } catch (_) {
-                  statusText = 'UNKNOWN';
+                  statusText = s.getText('unknown_status');
                   statusColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.4);
                   canCancel = false;
                 }
@@ -484,7 +485,21 @@ class _BookingScreenState extends State<BookingScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(title: Text(s.getText('booking'), style: const TextStyle(fontWeight: FontWeight.bold)), centerTitle: true, backgroundColor: Colors.transparent, actions:[IconButton(icon: Icon(Icons.sync, color: Theme.of(context).colorScheme.primary), onPressed: _fetchData)]),
+      appBar: AppBar(
+        title: Text(s.getText('booking'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.fastfood, color: Theme.of(context).colorScheme.primary),
+            onPressed: () => _showFoodMenu(s),
+          ),
+          IconButton(
+            icon: Icon(Icons.sync, color: Theme.of(context).colorScheme.primary),
+            onPressed: _fetchData,
+          ),
+        ],
+      ),
       body: Column(children: [
         _buildClubSelector(),
         Expanded(child: SingleChildScrollView(physics: const BouncingScrollPhysics(), child: Column(children: [
@@ -493,9 +508,13 @@ class _BookingScreenState extends State<BookingScreen> {
           const SizedBox(height: 16),
           _buildTimeAndDuration(s),
           const SizedBox(height: 32),
-          if (_isLoading) CircularProgressIndicator(color: Theme.of(context).colorScheme.primary) else if (_roomsData != null) _buildStaticMap(_roomsData!['rooms'], user),
+          if (_isLoading)
+            const Center(
+              child: GamingSpinner(size: 80),
+            )
+          else if (_roomsData != null) _buildStaticMap(_roomsData!['rooms'], user),
           const SizedBox(height: 40),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [ _legendItem(Theme.of(context).colorScheme.outline, 'Free'), _legendItem(Theme.of(context).colorScheme.surfaceVariant, 'Busy'), _legendItem(Theme.of(context).colorScheme.primary, 'Selected') ]),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [ _legendItem(Theme.of(context).colorScheme.outline, s.getText('pc_free')), _legendItem(Theme.of(context).colorScheme.surfaceVariant, s.getText('pc_occupied')), _legendItem(Theme.of(context).colorScheme.primary, s.getText('pc_selected')) ]),
           const SizedBox(height: 40),
         ]))),
       ]),
@@ -514,6 +533,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   Future<void> _handleBooking() async {
     final user = Provider.of<UserProvider>(context, listen: false);
+    final s = Provider.of<SettingsProvider>(context, listen: false);
     final p = _calculateSmartPrice(_selectedPc!);
     
     print('🎯 [BOOKING] Начало бронирования:');
@@ -523,12 +543,18 @@ class _BookingScreenState extends State<BookingScreen> {
     print('🎯 [BOOKING] Баланс: ${user.balance}, цена: ${p['final']}');
     
     if (double.parse(user.balance) < p['final']!) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Insufficient balance!')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.getText('insufficient_balance'))));
       return;
     }
     
     try {
-      showDialog(context: context, barrierDismissible: false, builder: (_) => Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)));
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: GamingSpinner(size: 100),
+        ),
+      );
       
       final bookingData = {
         "icafe_id": _selectedCafeId!,
@@ -571,9 +597,12 @@ class _BookingScreenState extends State<BookingScreen> {
           endTime: endTime,
         );
         
+        // Показываем анимацию успеха
+        _showSuccessAnimation();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Бронирование успешно создано!'),
+            content: Text(s.getText('booking_success')),
             backgroundColor: Theme.of(context).colorScheme.primary,
             duration: const Duration(seconds: 3),
           ),
@@ -605,7 +634,7 @@ class _BookingScreenState extends State<BookingScreen> {
           
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Бронирование успешно создано!'),
+              content: Text(s.getText('booking_success')),
               backgroundColor: Theme.of(context).colorScheme.primary,
               duration: const Duration(seconds: 3),
             ),
@@ -613,12 +642,12 @@ class _BookingScreenState extends State<BookingScreen> {
         } else {
           // Сервер вернул ошибку
           Navigator.pop(context);
-          final errorMsg = response['message'] ?? 'Неизвестная ошибка';
+          final errorMsg = response['message'] ?? s.getText('unknown_error');
           print('❌ [BOOKING] Ошибка бронирования от сервера: $errorMsg');
           
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Ошибка бронирования: $errorMsg'),
+              content: Text('${s.getText('booking_error')} $errorMsg'),
               backgroundColor: Theme.of(context).colorScheme.error,
               duration: const Duration(seconds: 5),
             ),
@@ -640,7 +669,7 @@ class _BookingScreenState extends State<BookingScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Проверьте историю бронирований для подтверждения'),
+          content: Text(s.getText('check_history')),
           backgroundColor: Theme.of(context).colorScheme.secondary,
           duration: const Duration(seconds: 4),
         ),
@@ -651,7 +680,7 @@ class _BookingScreenState extends State<BookingScreen> {
       print('❌ [BOOKING] Ошибка бронирования: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ошибка: ${e.toString().replaceAll('Exception: ', '')}'),
+          content: Text('${s.getText('error_prefix')} ${e.toString().replaceAll('Exception: ', '')}'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -665,16 +694,17 @@ class _BookingScreenState extends State<BookingScreen> {
     String offerId,
     UserProvider user,
   ) {
+    final s = Provider.of<SettingsProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Отмена бронирования'),
-        content: Text('Вы уверены, что хотите отменить бронь на ПК $pcName?'),
+        title: Text(s.getText('cancel_booking')),
+        content: Text('${s.getText('cancel_confirm')} $pcName?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('НЕТ'),
+            child: Text(s.getText('no')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -696,7 +726,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Бронирование отменено'),
+                      content: Text(s.getText('booking_cancelled')),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                     ),
                   );
@@ -705,7 +735,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Ошибка: $e'),
+                      content: Text('${s.getText('error_prefix')} $e'),
                       backgroundColor: Theme.of(context).colorScheme.error,
                     ),
                   );
@@ -716,7 +746,7 @@ class _BookingScreenState extends State<BookingScreen> {
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
-            child: const Text('ОТМЕНИТЬ'),
+            child: Text(s.getText('cancel_btn')),
           ),
         ],
       ),
@@ -737,4 +767,228 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _legendItem(Color c, String t) => Row(children: [Container(width: 8, height: 8, color: c, margin: const EdgeInsets.only(right: 4)), Text(t, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11))]);
+
+  /// Показывает BottomSheet с меню доставки еды
+  void _showFoodMenu(SettingsProvider s) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    // Демо-меню
+    final foodItems = [
+      {'name': s.getText('food_pizza'), 'price': 350, 'emoji': '🍕'},
+      {'name': s.getText('food_cola'), 'price': 100, 'emoji': '🥤'},
+      {'name': s.getText('food_fries'), 'price': 150, 'emoji': '🍟'},
+      {'name': s.getText('food_hotdog'), 'price': 200, 'emoji': '🌭'},
+      {'name': s.getText('food_snacks'), 'price': 120, 'emoji': '🥜'},
+    ];
+    
+    Map<int, int> quantities = {for (int i = 0; i < foodItems.length; i++) i: 0};
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            int total = 0;
+            for (int i = 0; i < foodItems.length; i++) {
+              final price = foodItems[i]['price'] as int;
+              total += price * quantities[i]!;
+            }
+            
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Заголовок
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colorScheme.onSurface.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    s.getText('food_menu'),
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Список товаров
+                  ...List.generate(foodItems.length, (i) {
+                    final item = foodItems[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(item['emoji'] as String, style: const TextStyle(fontSize: 24)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['name'] as String,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  '${item['price']} ₽',
+                                  style: TextStyle(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Счётчик количества
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  if (quantities[i]! > 0) {
+                                    setSheetState(() => quantities[i] = quantities[i]! - 1);
+                                  }
+                                },
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: colorScheme.outline),
+                                  ),
+                                  child: Center(
+                                    child: Icon(Icons.remove, size: 16, color: colorScheme.onSurface),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 36,
+                                child: Center(
+                                  child: Text(
+                                    '${quantities[i]}',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => setSheetState(() => quantities[i] = quantities[i]! + 1),
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Center(
+                                    child: Icon(Icons.add, size: 16, color: colorScheme.onPrimary),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                  // Итого и кнопка заказа
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${s.getText('food_total')}: $total ₽',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: total > 0 ? colorScheme.primary : colorScheme.surface,
+                          foregroundColor: total > 0 ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.5),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: total > 0
+                            ? () {
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(s.getText('food_ordered')),
+                                    backgroundColor: Colors.green,
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            : null,
+                        child: Text(
+                          s.getText('food_order'),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Показывает анимацию успешного бронирования
+  void _showSuccessAnimation() {
+    final s = Provider.of<SettingsProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        Future.delayed(const Duration(seconds: 3), () {
+          if (ctx.mounted) Navigator.pop(ctx);
+        });
+        return AlertDialog(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          content: SuccessAnimation(
+            size: 150,
+            message: s.getText('booking_success'),
+          ),
+        );
+      },
+    );
+  }
 }

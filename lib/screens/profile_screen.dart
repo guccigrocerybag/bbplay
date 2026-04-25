@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
 import '../providers/user_provider.dart';
+import '../providers/settings_provider.dart';
 import '../core/utils/api_client.dart';
 import 'auth_screen.dart';
 import 'history_screen.dart';
@@ -16,11 +20,95 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   
+  // --- ВЫБОР АВАТАРКИ ---
+  Future<void> _pickAvatar(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+      if (image != null) {
+        if (!mounted) return;
+        await context.read<UserProvider>().setAvatar(image.path);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final s = context.read<SettingsProvider>();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${s.getText('photo_error')} $e')),
+      );
+    }
+  }
+
+  void _showAvatarPicker() {
+    final settings = context.read<SettingsProvider>();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                settings.getText('change_avatar'),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ListTile(
+                leading: const Icon(FontAwesomeIcons.camera),
+                title: Text(settings.getText('avatar_camera')),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAvatar(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(FontAwesomeIcons.image),
+                title: Text(settings.getText('avatar_gallery')),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAvatar(ImageSource.gallery);
+                },
+              ),
+              if (context.read<UserProvider>().avatarPath != null)
+                ListTile(
+                  leading: Icon(FontAwesomeIcons.trashCan,
+                      color: Theme.of(context).colorScheme.error),
+                  title: Text(
+                    settings.getText('avatar_remove'),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.read<UserProvider>().setAvatar(null);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- ЛОГИКА ПОПОЛНЕНИЯ БАЛАНСА ---
   Future<void> _showTopUpDialog() async {
     final user = Provider.of<UserProvider>(context, listen: false);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final settings = context.read<SettingsProvider>();
     
     final TextEditingController amountController = TextEditingController();
     double? finalAmount;
@@ -36,7 +124,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Deposit Funds', textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.onSurface)),
+            Text(
+              settings.getText('deposit_funds'),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+            ),
             const SizedBox(height: 24),
             TextField(
               controller: amountController,
@@ -49,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 suffixText: '₽',
                 suffixStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
                 filled: true, 
-                fillColor: colorScheme.surfaceVariant, 
+                fillColor: colorScheme.surfaceContainerHighest, 
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                 hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.5)),
               ),
@@ -61,11 +153,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: ElevatedButton(
                     onPressed: () => amountController.text = '100',
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.surfaceVariant,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
                       foregroundColor: colorScheme.onSurfaceVariant,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('100 ₽'),
+                    child: Text(settings.getText('rub_100')),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -73,11 +165,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: ElevatedButton(
                     onPressed: () => amountController.text = '500',
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.surfaceVariant,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
                       foregroundColor: colorScheme.onSurfaceVariant,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('500 ₽'),
+                    child: Text(settings.getText('rub_500')),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -85,11 +177,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: ElevatedButton(
                     onPressed: () => amountController.text = '1000',
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.surfaceVariant,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
                       foregroundColor: colorScheme.onSurfaceVariant,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('1000 ₽'),
+                    child: Text(settings.getText('rub_1000')),
                   ),
                 ),
               ],
@@ -103,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.pop(context);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: const Text('Введите сумму больше 0'),
+                    content: Text(settings.getText('enter_amount')),
                     backgroundColor: colorScheme.error,
                   ));
                 }
@@ -114,12 +206,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: const Text('TOP UP', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Text(
+                settings.getText('top_up'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6))),
+              child: Text(
+                settings.getText('cancel'),
+                style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+              ),
             ),
           ],
         ),
@@ -133,9 +231,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (!mounted) return;
         user.updateBalance(finalAmount!);
       } catch (e) {
-        user.updateBalance(finalAmount!); // Fallback для демо-режима
+        user.updateBalance(finalAmount!);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Demo top-up successful!'),
+          content: Text(settings.getText('demo_topup')),
           backgroundColor: colorScheme.primary,
         ));
       }
@@ -147,7 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = Provider.of<UserProvider>(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    final settings = Provider.of<SettingsProvider>(context);
     
     // Динамический расчет ранга для красоты
     double bal = double.tryParse(user.balance) ?? 0.0;
@@ -155,9 +254,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     double progress = (bal % 1000) / 1000;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('GAMER PROFILE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 16)),
+        title: Text(
+          settings.getText('gamer_profile'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         foregroundColor: colorScheme.onSurface,
@@ -169,27 +271,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             // --- HEADER: AVATAR & RANK ---
-            Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle, 
-                    gradient: LinearGradient(colors: [colorScheme.primary, colorScheme.secondary])
+            GestureDetector(
+              onTap: _showAvatarPicker,
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle, 
+                      gradient: LinearGradient(colors: [colorScheme.primary, colorScheme.primary])
+                    ),
+                    child: CircleAvatar(
+                      radius: 50, 
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      backgroundImage: user.avatarPath != null
+                          ? FileImage(File(user.avatarPath!))
+                          : null,
+                      child: user.avatarPath == null
+                          ? Icon(FontAwesomeIcons.userAstronaut, size: 45, color: colorScheme.onSurfaceVariant)
+                          : null,
+                    ),
                   ),
-                  child: CircleAvatar(
-                    radius: 50, 
-                    backgroundColor: colorScheme.surfaceVariant, 
-                    child: Icon(FontAwesomeIcons.userAstronaut, size: 45, color: colorScheme.onSurfaceVariant)
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.edit, size: 16, color: colorScheme.onPrimary),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: colorScheme.primary, shape: BoxShape.circle),
-                  child: Icon(Icons.verified, size: 18, color: colorScheme.onPrimary),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -222,8 +335,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('RANK PROGRESS', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.bold)),
-                      Text('${(progress * 100).toStringAsFixed(0)}%', style: TextStyle(color: colorScheme.primary, fontSize: 11, fontWeight: FontWeight.bold)),
+                      Text(
+                        settings.getText('rank_progress'),
+                        style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      Text('${(progress * 100).toStringAsFixed(0)}%',
+                        style: TextStyle(color: colorScheme.primary, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -232,7 +350,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 8,
-                      backgroundColor: colorScheme.surfaceVariant,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
                       color: colorScheme.primary,
                     ),
                   ),
@@ -262,7 +380,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Icon(FontAwesomeIcons.wallet, size: 14, color: colorScheme.onSurface.withOpacity(0.6)),
                       const SizedBox(width: 8),
-                      Text('AVAILABLE BALANCE', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                      Text(
+                        settings.getText('available_balance'),
+                        style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -281,12 +402,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                     onPressed: _showTopUpDialog,
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(FontAwesomeIcons.plus, size: 16),
-                        SizedBox(width: 8),
-                        Text('TOP UP BALANCE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        const Icon(FontAwesomeIcons.plus, size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          settings.getText('top_up_balance'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
                       ],
                     ),
                   ),
@@ -306,28 +430,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSpacing: 16,
               children: [
                 _buildActionCard(
-                  icon: FontAwesomeIcons.history,
-                  title: 'Booking History',
+                  icon: FontAwesomeIcons.clockRotateLeft,
+                  title: settings.getText('booking_history'),
                   color: colorScheme.primary,
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen())),
                 ),
                 _buildActionCard(
                   icon: FontAwesomeIcons.gear,
-                  title: 'Settings',
-                  color: colorScheme.secondary,
+                  title: settings.getText('settings'),
+                  color: colorScheme.primary,
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
                 ),
                 _buildActionCard(
                   icon: FontAwesomeIcons.share,
-                  title: 'Invite Friends',
-                  color: const Color(0xFF00C853),
-                  onTap: () => _showInviteDialog(context, colorScheme),
+                  title: settings.getText('invite_friends'),
+                  color: colorScheme.primary,
+                  onTap: () => _showInviteDialog(context, colorScheme, settings),
                 ),
                 _buildActionCard(
                   icon: FontAwesomeIcons.rightFromBracket,
-                  title: 'Log Out',
+                  title: settings.getText('log_out'),
                   color: colorScheme.error,
-                  onTap: () => _logout(context),
+                  onTap: () => _logout(context, settings),
                 ),
               ],
             ),
@@ -384,40 +508,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showInviteDialog(BuildContext context, ColorScheme colorScheme) {
+  void _showInviteDialog(BuildContext context, ColorScheme colorScheme, SettingsProvider settings) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: colorScheme.surface,
-        title: Text('Invite Friends', style: TextStyle(color: colorScheme.onSurface)),
+        title: Text(settings.getText('invite_title'), style: TextStyle(color: colorScheme.onSurface)),
         content: Text(
-          'Share your referral code with friends and get bonuses!',
+          settings.getText('invite_text'),
           style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('OK', style: TextStyle(color: colorScheme.primary)),
+            child: Text(settings.getText('ok'), style: TextStyle(color: colorScheme.primary)),
           ),
         ],
       ),
     );
   }
 
-  void _logout(BuildContext context) {
+  void _logout(BuildContext context, SettingsProvider settings) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: Text('Log Out', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        title: Text(settings.getText('logout_title'), style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         content: Text(
-          'Are you sure you want to log out?',
+          settings.getText('logout_confirm'),
           style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+            child: Text(settings.getText('cancel'), style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
           ),
           TextButton(
             onPressed: () {
@@ -428,7 +552,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 (route) => false,
               );
             },
-            child: Text('Log Out', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(settings.getText('logout_btn'), style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),

@@ -13,7 +13,7 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(s.getText('settings').toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Text(s.getText('settings'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -59,11 +59,11 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (context) => SimpleDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Choose Theme'),
+        title: Text(settings.getText('theme_title'), style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         children: [
-          _themeOption(context, settings, 'System Default', ThemeModeOption.system),
-          _themeOption(context, settings, 'Light Mode', ThemeModeOption.light),
-          _themeOption(context, settings, 'Dark Mode', ThemeModeOption.dark),
+          _themeOption(context, settings, settings.getText('theme_system'), ThemeModeOption.system),
+          _themeOption(context, settings, settings.getText('theme_light'), ThemeModeOption.light),
+          _themeOption(context, settings, settings.getText('theme_dark'), ThemeModeOption.dark),
         ],
       ),
     );
@@ -87,7 +87,7 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (context) => SimpleDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Select Language'),
+        title: Text(settings.getText('lang_title'), style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         children: ['Русский', 'English'].map((lang) => RadioListTile<String>(
           title: Text(lang, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           value: lang,

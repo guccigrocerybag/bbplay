@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LocalBooking {
   final DateTime startTime;
@@ -13,12 +14,43 @@ class UserProvider extends ChangeNotifier {
   // Список ПК, для которых мы ждем подтверждения отмены от сервера
   final List<String> _pendingSyncPcs = [];
 
+  // ─── АВАТАРКА ─────────────────────────────────────────────
+  String? _avatarPath; // null = нет аватарки, иначе путь к файлу
+
   Map<String, dynamic>? get userData => _userData;
   List<String> get pendingSyncPcs => _pendingSyncPcs;
+  String? get avatarPath => _avatarPath;
 
   String get memberId => _userData?['member_id']?.toString() ?? "";
   String get account => _userData?['member_account'] ?? "Гость";
   String get balance => _userData?['member_balance']?.toString() ?? "0.00";
+
+  UserProvider() {
+    _loadAvatar();
+  }
+
+  /// Загружаем путь к аватару из SharedPreferences
+  Future<void> _loadAvatar() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _avatarPath = prefs.getString('avatar_path');
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Устанавливаем новый аватар (путь к файлу)
+  Future<void> setAvatar(String? path) async {
+    _avatarPath = path;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (path != null) {
+        await prefs.setString('avatar_path', path);
+      } else {
+        await prefs.remove('avatar_path');
+      }
+    } catch (_) {}
+    notifyListeners();
+  }
 
   void setUser(Map<String, dynamic> data) {
     _userData = data;
@@ -72,6 +104,7 @@ class UserProvider extends ChangeNotifier {
     _userData = null;
     _localBookings.clear();
     _pendingSyncPcs.clear();
+    _avatarPath = null;
     notifyListeners();
   }
 }

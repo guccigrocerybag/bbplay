@@ -32,6 +32,14 @@ dependencies:
   cupertino_icons: ^1.0.6
   flutter_local_notifications: ^21.0.0
   timezone: ^0.11.0
+  lottie: ^3.3.3
+  shimmer: ^3.0.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  connectivity_plus: ^7.1.1
+  smooth_page_indicator: ^2.0.1
+  flutter_svg: ^2.0.10+1
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:
@@ -41,6 +49,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Раскомментируй и добавь пути, если в проекте появятся локальные картинки
-  # assets:
-  #   - assets/images/
+  assets:
+    - assets/images/

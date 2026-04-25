@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/utils/api_client.dart';
 import '../providers/user_provider.dart';
+import '../providers/settings_provider.dart';
+import '../widgets/app_animations.dart';
 import 'main_layout.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -22,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final String _defaultCafeId = "87375"; 
 
   Future<void> _submit() async {
+    final settings = context.read<SettingsProvider>();
     final login = _loginController.text.trim();
     final password = _passwordController.text.trim();
     final phone = _phoneController.text.trim();
@@ -29,7 +32,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (login.isEmpty || password.isEmpty || (!_isLoginMode && phone.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Заполните все поля!'), 
+          content: Text(settings.getText('enter_credentials')), 
           backgroundColor: Theme.of(context).colorScheme.error,
         )
       );
@@ -41,7 +44,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!passwordRegex.hasMatch(password)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Пароль слишком простой! Проверьте требования.'), 
+          content: Text(settings.getText('password_too_simple')), 
             backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 4),
           )
@@ -74,7 +77,7 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() => _isLoading = false);
 
         // Показываем окно ввода кода
-        String? smsCode = await _showSmsDialog();
+        String? smsCode = await _showSmsDialog(settings);
         if (smsCode == null || smsCode.isEmpty) return;
 
         setState(() => _isLoading = true);
@@ -90,7 +93,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ошибка: ${e.toString().replaceAll('Exception: ', '')}'), 
+          content: Text('${settings.getText('auth_error')}: ${e.toString().replaceAll('Exception: ', '')}'), 
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -123,7 +126,7 @@ class _AuthScreenState extends State<AuthScreen> {
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainLayout()));
   }
 
-  Future<String?> _showSmsDialog() {
+  Future<String?> _showSmsDialog(SettingsProvider settings) {
     final TextEditingController smsController = TextEditingController();
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -134,14 +137,14 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: colorScheme.surface,
         title: Text(
-          'Подтверждение', 
+          settings.getText('sms_confirm_title'), 
           style: TextStyle(color: colorScheme.onSurface)
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children:[
             Text(
-              'Мы отправили код на ваш номер. Введите его ниже:', 
+              settings.getText('sms_confirm_body'), 
               style: TextStyle(
                 color: colorScheme.onSurface.withOpacity(0.7), 
                 fontSize: 13
@@ -172,14 +175,14 @@ class _AuthScreenState extends State<AuthScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context, null), 
             child: Text(
-              'ОТМЕНА', 
+              settings.getText('sms_cancel_btn'), 
               style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7))
             )
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, smsController.text.trim()), 
             child: Text(
-              'ПОДТВЕРДИТЬ', 
+              settings.getText('sms_confirm_btn'), 
               style: TextStyle(
                 color: colorScheme.primary, 
                 fontWeight: FontWeight.bold
@@ -196,6 +199,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final settings = Provider.of<SettingsProvider>(context);
     
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -218,7 +222,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _isLoginMode ? 'Вход в аккаунт' : 'Создание аккаунта', 
+                _isLoginMode ? settings.getText('auth_title') : settings.getText('reg_title'), 
                 textAlign: TextAlign.center, 
                 style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7), fontSize: 16)
               ),
@@ -228,7 +232,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 controller: _loginController,
                 style: TextStyle(color: colorScheme.onSurface),
                 decoration: InputDecoration(
-                  labelText: 'Логин', 
+                  labelText: settings.getText('login_label'), 
                   labelStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
                   filled: true, 
                   fillColor: colorScheme.surface,
@@ -246,7 +250,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   keyboardType: TextInputType.phone,
                   style: TextStyle(color: colorScheme.onSurface),
                   decoration: InputDecoration(
-                    labelText: 'Телефон (Например, 79991234567)', 
+                    labelText: settings.getText('phone_hint'), 
                     labelStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
                     filled: true, 
                     fillColor: colorScheme.surface,
@@ -264,7 +268,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 obscureText: true,
                 style: TextStyle(color: colorScheme.onSurface),
                 decoration: InputDecoration(
-                  labelText: 'Пароль', 
+                  labelText: settings.getText('pass_label'), 
                   labelStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
                   filled: true, 
                   fillColor: colorScheme.surface,
@@ -279,7 +283,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0, left: 4.0),
                   child: Text(
-                    'Пароль должен содержать минимум 8 символов, хотя бы одну ЗАГЛАВНУЮ букву, одну строчную и одну цифру.',
+                    settings.getText('password_requirements'),
                     style: TextStyle(
                       color: colorScheme.onSurface.withOpacity(0.6), 
                       fontSize: 11, 
@@ -291,17 +295,19 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(height: 32),
 
               _isLoading 
-                ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
+                ? const Center(
+                    child: GamingSpinner(size: 80),
+                  )
                 : ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorScheme.primary,
-                      foregroundColor: isDark ? Colors.black : Colors.white,
+                      foregroundColor: colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: _submit,
                     child: Text(
-                      _isLoginMode ? 'ВОЙТИ' : 'ЗАРЕГИСТРИРОВАТЬСЯ', 
+                      _isLoginMode ? settings.getText('login_btn_text') : settings.getText('register_btn_text'), 
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
                     ),
                   ),
@@ -313,7 +319,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   setState(() => _isLoginMode = !_isLoginMode);
                 },
                 child: Text(
-                  _isLoginMode ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войти',
+                  _isLoginMode ? settings.getText('no_account') : settings.getText('have_account'),
                   style: TextStyle(
                     color: colorScheme.onSurface.withOpacity(0.7), 
                     decoration: TextDecoration.underline

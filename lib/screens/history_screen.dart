@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:shimmer/shimmer.dart';
 import '../core/utils/api_client.dart';
 import '../providers/user_provider.dart';
+import '../providers/settings_provider.dart';
 
 /// Экран истории сессий (бронирований)
 /// 
@@ -190,12 +192,13 @@ class _HistoryScreenState extends State<HistoryScreen>
     final user = Provider.of<UserProvider>(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final settings = Provider.of<SettingsProvider>(context);
 
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
-        title: const Text('История сессий',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(settings.getText('history_title'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
@@ -205,10 +208,10 @@ class _HistoryScreenState extends State<HistoryScreen>
           labelColor: colorScheme.primary,
           unselectedLabelColor: colorScheme.onSurface.withOpacity(0.5),
           indicatorColor: colorScheme.primary,
-          tabs: const [
-            Tab(text: 'Все'),
-            Tab(text: 'Активные'),
-            Tab(text: 'Завершённые'),
+          tabs: [
+            Tab(text: settings.getText('history_all')),
+            Tab(text: settings.getText('history_active')),
+            Tab(text: settings.getText('history_completed')),
           ],
         ),
         actions: [
@@ -249,8 +252,7 @@ class _HistoryScreenState extends State<HistoryScreen>
         builder: (context, snapshot) {
           // Загрузка
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-                child: CircularProgressIndicator(color: colorScheme.primary));
+            return _buildShimmerLoading(colorScheme);
           }
 
           // Ошибка
@@ -358,6 +360,51 @@ class _HistoryScreenState extends State<HistoryScreen>
             itemBuilder: (context, index) {
               return _buildSessionCard(allSessions[index], colorScheme);
             },
+          );
+        },
+      ),
+    );
+  }
+
+  /// Скелетон-загрузка с эффектом Shimmer для истории
+  Widget _buildShimmerLoading(ColorScheme colorScheme) {
+    return Shimmer.fromColors(
+      baseColor: colorScheme.surfaceVariant.withOpacity(0.5),
+      highlightColor: colorScheme.surfaceVariant.withOpacity(0.8),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 4,
+        itemBuilder: (context, index) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Верхняя часть
+                Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                ),
+                // Детали
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Container(height: 14, width: double.infinity, color: Colors.white),
+                      const SizedBox(height: 8),
+                      Container(height: 14, width: 200, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),

@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import '../config.dart';
+import '../services/cache_service.dart';
 
 class ApiClient {
   static const String baseUrl = 'https://vibe.blackbearsplay.ru';
@@ -17,8 +19,24 @@ class ApiClient {
     return baseUrl;
   }
 
+  /// Список эндпоинтов, которые можно кешировать для оффлайн-режима
+  static const List<String> _cacheableEndpoints = [
+    '/cafes',
+    '/struct-rooms-icafe',
+    '/all-prices-icafe',
+  ];
+
+  /// Генерирует ключ кеша на основе endpoint и параметров
+  static String _cacheKey(String endpoint, Map<String, String>? params) {
+    if (params == null || params.isEmpty) return endpoint;
+    final sortedParams = params.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    return '$endpoint?${sortedParams.map((e) => '${e.key}=${e.value}').join('&')}';
+  }
+
   static Future<Map<String, dynamic>> get(String endpoint, {Map<String, String>? params}) async {
     final uri = Uri.parse('$_effectiveBaseUrl$endpoint').replace(queryParameters: params);
+    final cacheKey = _cacheKey(endpoint, params);
+    final bool isCacheable = _cacheableEndpoints.contains(endpoint);
     
     // Добавили таймаут и автоповтор для защиты от падений сервера
     int retryCount = 3;
@@ -27,8 +45,26 @@ class ApiClient {
         final response = await http
             .get(uri, headers: {'Accept': 'application/json'})
             .timeout(const Duration(seconds: 10));
-        return _handleResponse(response);
+        final result = _handleResponse(response);
+        
+        // Сохраняем в кеш, если эндпоинт кешируемый
+        if (isCacheable) {
+          try {
+            await CacheService.set(cacheKey, result);
+          } catch (_) {
+            // Игнорируем ошибки кеширования
+          }
+        }
+        
+        return result;
       } catch (e) {
+        // Если запрос не удался и эндпоинт кешируемый — пробуем кеш
+        if (isCacheable && retryCount == 1) {
+          final cached = await CacheService.getStale(cacheKey);
+          if (cached != null) {
+            return cached;
+          }
+        }
         retryCount--;
         if (retryCount == 0) rethrow;
         await Future.delayed(const Duration(seconds: 1));
@@ -190,5 +226,60 @@ class ApiClient {
     String rawKey = "$cafeId$pcName$memberId$randKey"; 
     String key = md5.convert(utf8.encode(rawKey)).toString();
     return {'rand_key': randKey, 'key': key};
+  }
+
+  // --- YANDEX GPT (ЧАТ-БОТ С НЕЙРОСЕТЬЮ) ---
+
+  /// Отправляет сообщение в YandexGPT и возвращает ответ.
+  ///
+  /// [messages] — история диалога в формате YandexGPT:
+  ///   [{ "role": "system"|"user"|"assistant", "text": "..." }]
+  static Future<String> chatWithAI(List<Map<String, String>> messages) async {
+    final url = Uri.parse(
+        'https://llm.api.cloud.yandex.net/foundationModels/v1/completion');
+
+    final body = {
+      "modelUri": "gpt://${AppConfig.yandexGptFolderId}/${AppConfig.yandexGptModel}",
+      "completionOptions": {
+        "stream": false,
+        "temperature": 0.6,
+        "maxTokens": 1000,
+      },
+      "messages": messages,
+    };
+
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Api-Key ${AppConfig.yandexGptApiKey}',
+            },
+            body: json.encode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final result = data['result'];
+        if (result != null &&
+            result['alternatives'] != null &&
+            result['alternatives'].isNotEmpty) {
+          final message = result['alternatives'][0]['message'];
+          if (message != null && message['text'] != null) {
+            return message['text'].toString();
+          }
+        }
+        return 'Извините, не удалось получить ответ от нейросети.';
+      } else {
+        final errorData = json.decode(response.body);
+        final errorMsg = errorData['error']?['message'] ?? 'Ошибка ${response.statusCode}';
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      // Если YandexGPT недоступен — выбрасываем исключение
+      rethrow;
+    }
   }
 }
