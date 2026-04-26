@@ -248,10 +248,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colorScheme = theme.colorScheme;
     final settings = Provider.of<SettingsProvider>(context);
     
-    // Динамический расчет ранга для красоты
-    double bal = double.tryParse(user.balance) ?? 0.0;
-    String rank = bal > 50000 ? "GOLD" : (bal > 10000 ? "SILVER" : "BRONZE");
-    double progress = (bal % 1000) / 1000;
+    // Ранг на основе баллов (member_points) с сервера
+    double pts = double.tryParse(user.points) ?? 0.0;
+    String rank;
+    double nextRankPoints;
+    double progress;
+    if (pts >= 5000) {
+      rank = "GOLD";
+      nextRankPoints = 5000;
+      progress = 1.0;
+    } else if (pts >= 1000) {
+      rank = "SILVER";
+      nextRankPoints = 5000;
+      progress = (pts - 1000) / (5000 - 1000);
+    } else {
+      rank = "BRONZE";
+      nextRankPoints = 1000;
+      progress = pts / 1000;
+    }
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -352,6 +366,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       minHeight: 8,
                       backgroundColor: colorScheme.surfaceContainerHighest,
                       color: colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // --- POINTS CARD ---
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: colorScheme.surface,
+                border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(FontAwesomeIcons.star, size: 20, color: colorScheme.primary),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        settings.getText('loyalty_points'),
+                        style: TextStyle(
+                          color: colorScheme.onSurface.withOpacity(0.6),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${user.points}',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text(
+                    rank == "GOLD" ? 'MAX' : '→ ${nextRankPoints.toInt()}',
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withOpacity(0.4),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

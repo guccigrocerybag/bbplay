@@ -24,6 +24,7 @@ class UserProvider extends ChangeNotifier {
   String get memberId => _userData?['member_id']?.toString() ?? "";
   String get account => _userData?['member_account'] ?? "Гость";
   String get balance => _userData?['member_balance']?.toString() ?? "0.00";
+  String get points => _userData?['member_points']?.toString() ?? "0";
 
   UserProvider() {
     _loadAvatar();

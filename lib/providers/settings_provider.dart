@@ -262,6 +262,7 @@ class SettingsProvider extends ChangeNotifier {
 
       // ─── Профиль (дополнительные) ──────────────────────────
       'photo_error': 'Ошибка выбора фото:',
+      'loyalty_points': 'БАЛЛЫ ЛОЯЛЬНОСТИ',
       'ok': 'OK',
       'rub_100': '100 ₽',
       'rub_500': '500 ₽',
@@ -468,6 +469,7 @@ class SettingsProvider extends ChangeNotifier {
 
       // ─── Profile (additional) ──────────────────────────────
       'photo_error': 'Photo selection error:',
+      'loyalty_points': 'LOYALTY POINTS',
       'ok': 'OK',
       'rub_100': '100 ₽',
       'rub_500': '500 ₽',
