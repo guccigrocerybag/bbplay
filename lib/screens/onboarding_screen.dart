@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -8,7 +8,7 @@ import 'auth_screen.dart';
 
 /// Экран онбординга при первом запуске приложения.
 ///
-/// Показывает 3 страницы с описанием возможностей приложения.
+/// Показывает 3 страницы с SVG-иконками в зелёном цвете BBplay.
 /// После просмотра сохраняет флаг `onboarding_shown` в SharedPreferences.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -23,22 +23,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<_OnboardingPageData> _pages = [
     _OnboardingPageData(
-      lottieUrl:
-          'https://assets2.lottiefiles.com/packages/lf20_p8bfn5to.json',
+      svgAsset: 'assets/images/onboarding_gamepad.svg',
+      titleKey: 'onb_1_title',
+      descriptionKey: 'onb_1_sub',
+    ),
+    _OnboardingPageData(
+      svgAsset: 'assets/images/onboarding_monitor.svg',
       titleKey: 'onb_2_title',
       descriptionKey: 'onb_2_sub',
     ),
     _OnboardingPageData(
-      lottieUrl:
-          'https://assets9.lottiefiles.com/packages/lf20_syqnfe7c.json',
+      svgAsset: 'assets/images/onboarding_trophy.svg',
       titleKey: 'onb_3_title',
       descriptionKey: 'onb_3_sub',
-    ),
-    _OnboardingPageData(
-      lottieUrl:
-          'https://assets4.lottiefiles.com/packages/lf20_x1gjd0sx.json',
-      titleKey: 'chat',
-      descriptionKey: 'notif_sub',
     ),
   ];
 
@@ -92,7 +89,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 controller: _pageController,
                 onPageChanged: (page) =>
                     setState(() => _currentPage = page),
-                children: _pages.map((page) => _buildPage(page, colorScheme, settings)).toList(),
+                children: _pages
+                    .map((page) => _buildPage(page, colorScheme, settings))
+                    .toList(),
               ),
             ),
 
@@ -159,27 +158,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildPage(_OnboardingPageData page, ColorScheme colorScheme, SettingsProvider settings) {
+  Widget _buildPage(
+      _OnboardingPageData page, ColorScheme colorScheme, SettingsProvider settings) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Lottie-анимация
+          // SVG-иконка
           SizedBox(
-            width: 200,
-            height: 200,
-            child: Lottie.network(
-              page.lottieUrl,
-              width: 200,
-              height: 200,
-              errorBuilder: (context, error, stackTrace) {
-                return Icon(
-                  Icons.sports_esports,
-                  size: 120,
-                  color: colorScheme.primary.withOpacity(0.5),
-                );
-              },
+            width: 180,
+            height: 180,
+            child: SvgPicture.asset(
+              page.svgAsset,
+              width: 180,
+              height: 180,
             ),
           ),
           const SizedBox(height: 48),
@@ -214,12 +207,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
 /// Внутренняя модель данных для страницы онбординга
 class _OnboardingPageData {
-  final String lottieUrl;
+  final String svgAsset;
   final String titleKey;
   final String descriptionKey;
 
   const _OnboardingPageData({
-    required this.lottieUrl,
+    required this.svgAsset,
     required this.titleKey,
     required this.descriptionKey,
   });

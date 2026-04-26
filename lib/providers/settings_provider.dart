@@ -351,7 +351,7 @@ class SettingsProvider extends ChangeNotifier {
       'select_date': 'SELECT DATE',
       'duration': 'DURATION',
       'select_pc': 'SELECT PC',
-      'book_now': 'BOOK NOW',
+      'book_now': 'Book Now',
       'book_success': 'Booking confirmed!',
       'book_error': 'Booking error',
       'pc_occupied': 'Occupied',
