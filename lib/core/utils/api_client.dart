@@ -211,6 +211,13 @@ class ApiClient {
     return await get('/all-books-cafes', params: {'member_account': account});
   }
 
+  // --- МЕТОДЫ ДЛЯ ПОЛУЧЕНИЯ ID КЛУБА ---
+
+  /// Возвращает icafe_id для запросов по клиентам.
+  static Future<Map<String, dynamic>> getIcafeIdForMember(String memberId) async {
+    return await get('/icafe-id-for-member', params: {'memberId': memberId});
+  }
+
   // --- МЕТОДЫ БРОНИРОВАНИЯ ---
 
   static Future<Map<String, dynamic>> getAvailablePcs({required String cafeId, required String date, required String time, required int mins}) async {

@@ -226,7 +226,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (finalAmount != null && finalAmount! > 0) {
       try {
-        final cafeId = user.userData?['member_icafe_id']?.toString() ?? "87375";
+        final cafeId = user.memberIcafeId.isNotEmpty ? user.memberIcafeId : "87375";
         await ApiClient.topUpBalance(cafeId: cafeId, memberId: user.memberId, account: user.account, amount: finalAmount!);
         if (!mounted) return;
         user.updateBalance(finalAmount!);
@@ -253,18 +253,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String rank;
     double nextRankPoints;
     double progress;
+    Color rankColor;
     if (pts >= 5000) {
       rank = "GOLD";
       nextRankPoints = 5000;
       progress = 1.0;
+      rankColor = const Color(0xFFFFD700); // Золотой
     } else if (pts >= 1000) {
       rank = "SILVER";
       nextRankPoints = 5000;
       progress = (pts - 1000) / (5000 - 1000);
+      rankColor = const Color(0xFFC0C0C0); // Серебряный
     } else {
       rank = "BRONZE";
       nextRankPoints = 1000;
       progress = pts / 1000;
+      rankColor = const Color(0xFFCD7F32); // Бронзовый
     }
 
     return Scaffold(
@@ -327,13 +331,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.1),
+                color: rankColor.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+                border: Border.all(color: rankColor.withOpacity(0.4)),
               ),
               child: Text(
                 rank,
-                style: TextStyle(color: colorScheme.primary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                style: TextStyle(color: rankColor, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2),
               ),
             ),
             const SizedBox(height: 8),
