@@ -76,21 +76,21 @@ class _BookingScreenState extends State<BookingScreen> {
         ApiClient.get('/struct-rooms-icafe', params: {'cafeId': _selectedCafeId!}),
         ApiClient.getAvailablePcs(cafeId: _selectedCafeId!, date: dateStr, time: timeStr, mins: _selectedMins),
         ApiClient.getAllPrices(cafeId: _selectedCafeId!, memberId: user.memberId, date: dateStr),
-        ApiClient.get('/api/v2/cafe/$_selectedCafeId/products'),
       ]);
       
       if (mounted) {
-        final v2Data = results[3]['data'];
-        List<Map<String, dynamic>> t2 = [];
-        if (v2Data['items'] != null) {
-          for (var item in v2Data['items']) {
-            String n = item['product_name'].toString().toLowerCase();
-            int d = 60;
-            if (n.contains('3 час')) d = 180; else if (n.contains('5 час')) d = 300;
-            t2.add({'group': item['product_group_name'] ?? '', 'price': item['product_price'], 'duration': d});
-          }
+        // Парсим цены из all-prices-icafe (results[2])
+        final pricesData = results[2]['data']['prices'] as List? ?? [];
+        List<Map<String, dynamic>> parsedPrices = [];
+        for (var p in pricesData) {
+          parsedPrices.add({
+            'group': p['group_name'] ?? 'Default',
+            'price': p['total_price'] ?? p['price_price1'],
+            'duration': p['duration'],
+            'price_per_half_hour': p['price_price1'], // цена за 30 мин (базовая)
+          });
         }
-        _v2Packages = t2;
+        _v2Packages = parsedPrices;
         _roomsData = results[0]['data'];
         _availabilityData = results[1]['data'];
         _isLoading = false;
@@ -116,14 +116,28 @@ class _BookingScreenState extends State<BookingScreen> {
     return false;
   }
 
+  /// Рассчитывает цену на основе данных с сервера (all-prices-icafe).
+  /// Сервер сам применяет скидки по рангу пользователя (memberId).
+  /// Если цена для данной зоны и длительности не найдена — использует хардкод как fallback.
   Map<String, int> _calculateSmartPrice(Map<String, dynamic> pc) {
     final zone = (pc['pc_group_name'] ?? pc['pc_area_name'] ?? 'Default').toString().toLowerCase();
-    int hr = zone.contains('bootcamp') ? 150 : (zone.contains('vip') ? 200 : 100);
-    int base = (hr * (_selectedMins / 60)).round();
+    
+    // Пытаемся найти цену с сервера для этой зоны и длительности
     try {
-      final pkg = _v2Packages.firstWhere((p) => p['duration'] == _selectedMins && p['group'].toString().toLowerCase().contains(zone));
-      return {'base': base, 'final': double.parse(pkg['price'].toString()).toInt()};
-    } catch (_) { return {'base': base, 'final': base}; }
+      final pkg = _v2Packages.firstWhere(
+        (p) => p['duration'] == _selectedMins && p['group'].toString().toLowerCase().contains(zone),
+      );
+      final serverPrice = double.parse(pkg['price'].toString()).toInt();
+      // base = цена почасовой оплаты (price_per_half_hour * кол-во получасов)
+      final halfHourPrice = double.parse(pkg['price_per_half_hour'].toString());
+      int base = (halfHourPrice * (_selectedMins / 30)).round();
+      return {'base': base, 'final': serverPrice};
+    } catch (_) {
+      // Fallback: хардкод, если сервер не вернул цену
+      int hr = zone.contains('bootcamp') ? 150 : (zone.contains('vip') ? 200 : 100);
+      int base = (hr * (_selectedMins / 60)).round();
+      return {'base': base, 'final': base};
+    }
   }
 
   // --- ЗАГРУЗКА СЕССИЙ ДЛЯ HUB ---
