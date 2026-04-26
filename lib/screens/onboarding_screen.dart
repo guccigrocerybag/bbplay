@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -8,7 +7,7 @@ import 'auth_screen.dart';
 
 /// Экран онбординга при первом запуске приложения.
 ///
-/// Показывает 3 страницы с SVG-иконками в зелёном цвете BBplay.
+/// Показывает 3 страницы с иконками в зелёном цвете BBplay.
 /// После просмотра сохраняет флаг `onboarding_shown` в SharedPreferences.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -23,17 +22,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<_OnboardingPageData> _pages = [
     _OnboardingPageData(
-      svgAsset: 'assets/images/onboarding_gamepad.svg',
+      icon: Icons.sports_esports_rounded,
       titleKey: 'onb_1_title',
       descriptionKey: 'onb_1_sub',
     ),
     _OnboardingPageData(
-      svgAsset: 'assets/images/onboarding_monitor.svg',
+      icon: Icons.desktop_windows_rounded,
       titleKey: 'onb_2_title',
       descriptionKey: 'onb_2_sub',
     ),
     _OnboardingPageData(
-      svgAsset: 'assets/images/onboarding_trophy.svg',
+      icon: Icons.emoji_events_rounded,
       titleKey: 'onb_3_title',
       descriptionKey: 'onb_3_sub',
     ),
@@ -165,14 +164,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // SVG-иконка
-          SizedBox(
+          // Иконка в зелёном цвете BBplay
+          Container(
             width: 180,
             height: 180,
-            child: SvgPicture.asset(
-              page.svgAsset,
-              width: 180,
-              height: 180,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              page.icon,
+              size: 100,
+              color: colorScheme.primary,
             ),
           ),
           const SizedBox(height: 48),
@@ -207,12 +210,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
 /// Внутренняя модель данных для страницы онбординга
 class _OnboardingPageData {
-  final String svgAsset;
+  final IconData icon;
   final String titleKey;
   final String descriptionKey;
 
   const _OnboardingPageData({
-    required this.svgAsset,
+    required this.icon,
     required this.titleKey,
     required this.descriptionKey,
   });
