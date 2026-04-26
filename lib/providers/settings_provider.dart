@@ -131,7 +131,7 @@ class SettingsProvider extends ChangeNotifier {
       'select_date': 'ВЫБЕРИТЕ ДАТУ',
       'duration': 'ДЛИТЕЛЬНОСТЬ',
       'select_pc': 'ВЫБЕРИТЕ ПК',
-      'book_now': 'ЗАБРОНИРОВАТЬ',
+      'book_now': 'Забронировать',
       'book_success': 'Бронь подтверждена!',
       'book_error': 'Ошибка бронирования',
       'pc_occupied': 'ПК занят',

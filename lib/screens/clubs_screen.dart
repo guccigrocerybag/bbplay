@@ -215,7 +215,10 @@ class _ClubsScreenState extends State<ClubsScreen> {
                                     Provider.of<BookingProvider>(context, listen: false).setTab(2);
                                   },
                                   icon: const Icon(FontAwesomeIcons.desktop, size: 16),
-                                  label: Text(s.getText('book_now')),
+                                  label: Text(
+                                    s.getText('book_now'),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: colorScheme.secondary,
                                     foregroundColor: colorScheme.onSecondary,
